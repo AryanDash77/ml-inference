@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ml-inference-service
+spec:
+  selector:
+    app: ml-inference-api
+  ports:
+    - port: 80
+      targetPort: 8000
+  # k3s ships with a built-in lightweight load balancer (Klipper),
+  # so LoadBalancer works even on a single bare EC2 node - no extra
+  # ingress controller needed for this project's scope.
+  type: LoadBalancer

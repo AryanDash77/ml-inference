@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-inference-api
+  labels:
+    app: ml-inference-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ml-inference-api
+  template:
+    metadata:
+      labels:
+        app: ml-inference-api
+    spec:
+      containers:
+        - name: ml-inference-api
+          # Replace with your ECR image URI after pushing, e.g.:
+          # 123456789012.dkr.ecr.ap-south-1.amazonaws.com/ml-inference-api:latest
+          image: <ECR_IMAGE_URI>:latest
+          ports:
+            - containerPort: 8000
+          # Sized for a t3.micro (1 vCPU / 1GB RAM) - deliberately small,
+          # so a couple of pods can co-exist on one node.
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "150Mi"
+            limits:
+              cpu: "300m"
+              memory: "300Mi"
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3

@@ -1,0 +1,41 @@
+# Zero Trust boundary, in two parts:
+#
+# 1) default-deny-all: nothing can reach any pod unless explicitly
+#    allowed below. This is the "never trust, always verify" baseline.
+# 2) allow-inference-traffic: explicitly allows only what's needed -
+#    inbound traffic to the model pods on port 8000.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-inference-traffic
+spec:
+  podSelector:
+    matchLabels:
+      app: ml-inference-api
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow DNS resolution (needed for the pod to function at all)
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
