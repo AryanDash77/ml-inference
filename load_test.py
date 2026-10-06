@@ -5,7 +5,7 @@ import json
 import statistics
 
 # Replace this with your EC2 Public IP address when you run the test
-EC2_IP = "http://YOUR_EC2_PUBLIC_IP/predict"
+EC2_IP = "[http://13.203.77.210/predict](http://13.203.77.210/predict)"
 
 # Test parameters
 NUM_REQUESTS = 1000
