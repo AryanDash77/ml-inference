@@ -12,6 +12,3 @@ range, not Amount's).
 Your trained model itself is fine - it was trained on correctly-scaled
 data before the bug occurred. Only the saved scaler.pkl is broken.
 
-To fix: run fix_scalers.py (in the project root) in the same folder as
-your creditcard.csv. It produces two correctly-fit scaler files -
-scaler_amount.pkl and scaler_time.pkl. Copy both into this folder.

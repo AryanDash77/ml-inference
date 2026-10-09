@@ -4,16 +4,16 @@ import time
 import json
 import statistics
 
-# Replace this with your EC2 Public IP address when you run the test
-EC2_IP = "[http://13.203.77.210/predict](http://13.203.77.210/predict)"
+TARGET_URL = "http://127.0.0.1:8000/predict"
 
 # Test parameters
 NUM_REQUESTS = 1000
 CONCURRENT_USERS = 50
 
-# Sample data matching your FastAPI input schema
 PAYLOAD = {
-    "features": [5.1, 3.5, 1.4, 0.2]  # Adjust based on your model's expected input
+    "v": [0.0] * 28,  
+    "amount": 150.50,
+    "time": 3600.0
 }
 
 async def send_request(session, url, payload):
@@ -31,20 +31,24 @@ async def main():
     timeout = aiohttp.ClientTimeout(total=5)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         tasks = []
+        all_results = []  # Initialize an empty list to store ALL results
+        
         for _ in range(NUM_REQUESTS):
-            tasks.append(send_request(session, EC2_IP, PAYLOAD))
+            tasks.append(send_request(session, TARGET_URL, PAYLOAD))
             
             # Throttle slightly to maintain steady concurrent load
             if len(tasks) >= CONCURRENT_USERS:
-                results = await asyncio.gather(*tasks)
+                batch_results = await asyncio.gather(*tasks)
+                all_results.extend(batch_results)  # Add this batch to the total list
                 tasks = []
         
         # Process any remaining tasks
         if tasks:
-            results += await asyncio.gather(*tasks)
+            batch_results = await asyncio.gather(*tasks)
+            all_results.extend(batch_results)
 
-    # Calculate metrics
-    latencies = [res[0] for res in results if res[1] == 200]
+    # Calculate metrics using the full list
+    latencies = [res[0] for res in all_results if res[1] == 200]
     success_rate = (len(latencies) / NUM_REQUESTS) * 100
 
     if latencies:
@@ -59,5 +63,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-    
+           

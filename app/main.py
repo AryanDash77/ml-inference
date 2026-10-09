@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("fraud-inference-api")
 
-MODEL_DIR = Path(os.getenv("MODEL_DIR", "/app/models"))
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "models"))
 
 app = FastAPI(title="Fraud Detection Inference API", version="1.0.0")
 
