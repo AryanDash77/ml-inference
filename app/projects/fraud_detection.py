@@ -33,7 +33,7 @@ PROJECT_ID = "fraud"
 TITLE = "Credit Card Fraud Detection"
 DESCRIPTION = "Flags a card transaction as FRAUD or LEGITIMATE."
 
-MODEL_DIR = Path(os.getenv("MODEL_DIR", "models")) / "fraud"
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "models")) / "fraud_detection"
 SCALER_AMOUNT_FILE = "scaler_amount.pkl"
 SCALER_TIME_FILE = "scaler_time.pkl"
 
