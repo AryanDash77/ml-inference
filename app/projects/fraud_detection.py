@@ -33,7 +33,7 @@ PROJECT_ID = "fraud"
 TITLE = "Credit Card Fraud Detection"
 DESCRIPTION = "Flags a card transaction as FRAUD or LEGITIMATE."
 
-MODEL_DIR = Path(os.getenv("MODEL_DIR", "models")) / "fraud_detection"
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "models")) / "fraud"
 SCALER_AMOUNT_FILE = "scaler_amount.pkl"
 SCALER_TIME_FILE = "scaler_time.pkl"
 
@@ -56,6 +56,22 @@ FIELDS = (
 )
 
 Transaction = build_schema("Transaction", FIELDS)
+
+# ---- Example inputs for the UI's example buttons ----------------------------
+# These are synthetic values (the dataset's V columns are anonymized), chosen so
+# you can show both outcomes in a demo.
+SAMPLES = [
+    dict(name="Baseline (all V = 0)",
+         values={"Time": 40000, "Amount": 50, **{n: 0.0 for n in V_NAMES}}),
+    dict(name="Model flags as fraud",
+         values={"Time": 94813, "Amount": 120.0,
+                 "V1": 0.55, "V2": 0.51, "V3": 0.28, "V4": 3.29, "V5": 0.18, "V6": -0.6,
+                 "V7": -1.01, "V8": -0.4, "V9": 0.59, "V10": -6.52, "V11": 0.98,
+                 "V12": -9.37, "V13": 0.78, "V14": -5.82, "V15": 0.18, "V16": 0.77,
+                 "V17": 1.77, "V18": -0.33, "V19": -0.69, "V20": 1.96, "V21": 0.24,
+                 "V22": 0.97, "V23": 0.87, "V24": -1.14, "V25": 2.43, "V26": 1.78,
+                 "V27": 0.18, "V28": 0.75}),
+]
 
 
 class PredictResponse(BaseModel):
@@ -157,5 +173,4 @@ legacy_router = APIRouter()
 @legacy_router.post("/predict", response_model=PredictResponse, include_in_schema=False)
 def predict_legacy(txn: Transaction, request: Request):  # type: ignore[valid-type]
     return _run("xgboost", txn, request)
-
 

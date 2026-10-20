@@ -118,6 +118,20 @@ FIELDS = [
 
 EmployeeInput = build_schema("EmployeeInput", FIELDS)
 
+# ---- Example inputs for the UI's example buttons ----------------------------
+# Only the columns that differ from the defaults above are listed.
+SAMPLES = [
+    dict(name="Stable employee",
+         values={"Age": 45, "MonthlyIncome": 15000, "StockOptionLevel": 2, "JobLevel": 4,
+                 "TotalWorkingYears": 20, "YearsAtCompany": 12, "MaritalStatus": "Married"}),
+    dict(name="At-risk employee",
+         values={"OverTime": "Yes", "MonthlyIncome": 1800, "MaritalStatus": "Single",
+                 "StockOptionLevel": 0, "JobSatisfaction": 1, "Age": 24, "YearsAtCompany": 1,
+                 "TotalWorkingYears": 2, "JobLevel": 1, "NumCompaniesWorked": 5,
+                 "BusinessTravel": "Travel_Frequently", "WorkLifeBalance": 1,
+                 "EnvironmentSatisfaction": 1}),
+]
+
 
 class PredictResponse(BaseModel):
     project: str
@@ -232,3 +246,4 @@ def predict(model_name: ModelName, employee: EmployeeInput):  # type: ignore[val
         latency_ms=round(latency_ms, 2),
         fields_defaulted=[f["name"] for f in FIELDS if f["name"] not in supplied],
     )
+
