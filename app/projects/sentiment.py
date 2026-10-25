@@ -125,17 +125,52 @@ def missing_files() -> list[str]:
 
 
 # ---- Text cleaning: the same steps as src/preprocessing.py in the project repo
+# NLTK's WordNetLemmatizer loads ALL of WordNet on first use: about 130 MB of RAM and
+# several seconds, far too heavy for a 1 GB server. For nouns (the default the repo
+# uses) it only needs two small WordNet files, so this reads just those and applies
+# NLTK's own noun rules. The results are identical to WordNetLemmatizer().lemmatize(w).
+NOUN_RULES = (("s", ""), ("ses", "s"), ("ves", "f"), ("xes", "x"), ("zes", "z"),
+              ("ches", "ch"), ("shes", "sh"), ("men", "man"), ("ies", "y"))
+
+
+def _build_noun_lemmatizer():
+    from nltk.data import find
+
+    def read_lines(name: str) -> list[str]:
+        with find(f"corpora/wordnet/{name}").open() as fh:  # works for a folder or wordnet.zip
+            return fh.read().decode("utf-8").splitlines()
+
+    # every noun WordNet knows (index lines that start with a space are licence text)
+    noun_lemmas = {line.split(None, 1)[0] for line in read_lines("index.noun")
+                   if line.strip() and not line.startswith(" ")}
+    # irregular plurals, e.g. "mice" -> "mouse"
+    exceptions = {}
+    for line in read_lines("noun.exc"):
+        terms = line.split()
+        if terms:
+            exceptions[terms[0]] = terms[1:]
+
+    def lemmatize(word: str) -> str:
+        candidates = exceptions.get(word)
+        if candidates is None:
+            candidates = [word[:-len(old)] + new for old, new in NOUN_RULES if word.endswith(old)]
+        found = []
+        for form in [word] + candidates:
+            if form in noun_lemmas and form not in found:
+                found.append(form)
+        return min(found, key=len) if found else word  # shortest known lemma, else unchanged
+
+    return lemmatize
+
+
 def _build_cleaner():
     from nltk.corpus import stopwords
-    from nltk.stem import WordNetLemmatizer
     from nltk.tokenize import word_tokenize
 
     stop_words = set(stopwords.words("english"))
-    lemmatizer = WordNetLemmatizer()
-    # NLTK loads its corpora lazily on first use and that first load is not
-    # thread-safe, so touch everything once here (we hold the lock) before
-    # real requests arrive on several threads.
-    lemmatizer.lemmatize("warm")
+    lemmatize = _build_noun_lemmatizer()
+    # NLTK loads the tokeniser lazily and that first load is not thread-safe, so use
+    # it once here (we hold the lock) before real requests arrive on several threads.
     word_tokenize("warm up")
 
     def clean_text(text: str) -> str:
@@ -146,7 +181,7 @@ def _build_cleaner():
         tokens = [w.strip(".") for w in tokens]
         tokens = [w for w in tokens if w]
         tokens = [w for w in tokens if w not in stop_words]
-        tokens = [lemmatizer.lemmatize(w) for w in tokens]
+        tokens = [lemmatize(w) for w in tokens]
         return " ".join(tokens)
 
     return clean_text

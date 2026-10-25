@@ -495,6 +495,7 @@ async function predict(ev) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(45000),   // never wait forever on a stuck server
     });
     const data = await res.json().catch(() => null);
     if (res.ok && data) showResult(data, url, body);
@@ -502,7 +503,9 @@ async function predict(ev) {
     else if (res.status === 503) els.result.replaceChildren(problem("This model is not available on the server right now. Its files may be missing."));
     else els.result.replaceChildren(problem((data && typeof data.detail === "string") ? data.detail : "The server returned an error (" + res.status + ")."));
   } catch (e) {
-    els.result.replaceChildren(problem("Could not reach the server. Check that it is running, then try again."));
+    els.result.replaceChildren(problem(e && e.name === "TimeoutError"
+      ? "The server did not answer within 45 seconds. It may be overloaded or restarting. Try again in a minute."
+      : "Could not reach the server. Check that it is running, then try again."));
   } finally {
     els.predict.disabled = false;
     els.predict.textContent = "Predict";
@@ -510,9 +513,13 @@ async function predict(ev) {
 }
 
 els.form.addEventListener("submit", predict);
-els.reset.addEventListener("click", () => { setDefaults(); clearResult(); });
+els.reset.addEventListener("click", () => {
+  setDefaults(); clearResult();
+  els.predict.disabled = false; els.predict.textContent = "Predict";
+});
 els.project.addEventListener("change", () => selectProject(els.project.value));
 init();
 </script>
 </body>
 </html>
+
