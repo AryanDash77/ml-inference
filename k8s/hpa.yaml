@@ -7,10 +7,11 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: ml-inference-api
-  # Kept low on purpose - a t3.micro only has 1 vCPU total, so scaling
-  # past 4 pods wouldn't actually help and would just exhaust the node.
+    # Kept low on purpose - a t3.small has only 2 vCPU and 2GB RAM, and k3s itself
+  # uses roughly 600MB of that. One pod peaks near 225MB, so 3 pods fit; scaling
+  # past that would not help and would exhaust the node's memory.
   minReplicas: 1
-  maxReplicas: 4
+  maxReplicas: 3
   metrics:
     - type: Resource
       resource:

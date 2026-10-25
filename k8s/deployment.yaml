@@ -5,7 +5,8 @@ metadata:
   labels:
     app: ml-inference-api
 spec:
-  replicas: 2
+  # No "replicas:" line on purpose. The HPA decides the pod count; a fixed number
+  # here would reset the pods to that number every time the pipeline re-applies this file.
   selector:
     matchLabels:
       app: ml-inference-api
@@ -21,25 +22,30 @@ spec:
           image: <ECR_IMAGE_URI>:latest
           ports:
             - containerPort: 8000
-          # Sized for a t3.micro (1 vCPU / 1GB RAM) - deliberately small,
-          # so a couple of pods can co-exist on one node.
+          # Sized for a t3.small (2 vCPU / 2GB RAM) that also runs k3s (~600MB).
+          # One pod peaks at about 225MB with all four projects loaded, so the
+          # 512Mi limit leaves a safe margin and up to 3 pods fit on the node.
           resources:
             requests:
-              cpu: "100m"
-              memory: "150Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              cpu: "300m"
-              memory: "300Mi"
+              cpu: "1000m"
+              memory: "512Mi"
           readinessProbe:
             httpGet:
               path: /ready
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 3
           livenessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 10
+            initialDelaySeconds: 20
             periodSeconds: 15
+            timeoutSeconds: 3
             failureThreshold: 3
+
+          
