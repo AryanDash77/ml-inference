@@ -15,12 +15,12 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from app.projects import attrition, fraud_detection
+from app.projects import attrition, fraud_detection, loan_default, sentiment
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 # Every project the server offers.
-PROJECTS = [fraud_detection, attrition]
+PROJECTS = [fraud_detection, attrition, loan_default, sentiment]
 
 app = FastAPI(
     title="ML Inference API",

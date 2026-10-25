@@ -19,6 +19,8 @@
     --ok-bg: #E3F3EA;
     --bad: #B8362A;
     --bad-bg: #FBE7E4;
+    --neutral: #3F5663;
+    --neutral-bg: #E8EDF0;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -33,6 +35,8 @@
       --ok-bg: #12372A;
       --bad: #FF8A7A;
       --bad-bg: #40201C;
+      --neutral: #B6C6CF;
+      --neutral-bg: #22323B;
     }
   }
 
@@ -84,7 +88,7 @@
   .rail .group-title { font-weight: 600; font-size: 0.82rem; margin: 0 0 6px; }
   .hint { font-size: 0.78rem; color: var(--muted); margin: 4px 0 0; }
 
-  select, input[type="number"] {
+  select, input[type="number"], textarea {
     width: 100%;
     padding: 8px 10px;
     font: inherit;
@@ -93,10 +97,12 @@
     border: 1px solid var(--line);
     border-radius: 6px;
   }
-  select:focus-visible, input:focus-visible, button:focus-visible, summary:focus-visible, a:focus-visible {
+  select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible, a:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+
+  textarea { resize: vertical; min-height: 7.5em; line-height: 1.45; }
 
   button {
     font: inherit;
@@ -125,6 +131,7 @@
   .verdict { border: 1px solid; border-radius: 8px; padding: 14px 14px 16px; }
   .verdict.ok  { background: var(--ok-bg);  border-color: var(--ok);  color: var(--ok); }
   .verdict.bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+  .verdict.neutral { background: var(--neutral-bg); border-color: var(--neutral); color: var(--neutral); }
   .verdict h2 { margin: 0; font-size: 1.7rem; line-height: 1.15; font-weight: 700; }
   .verdict .prob { margin: 4px 0 14px; color: var(--ink); }
   .verdict .prob strong { font-size: 1.15rem; }
@@ -142,6 +149,13 @@
     transform: translateX(-50%);
     font-size: 0.72rem; color: var(--muted); white-space: nowrap;
   }
+  .bars { display: grid; gap: 8px; margin: 0 0 4px; }
+  .bar-row { display: grid; grid-template-columns: 4.6em 1fr 3.6em; align-items: center; gap: 8px; font-size: 0.85rem; }
+  .bar-row span { color: var(--ink); }
+  .bar-row .bar-pct { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar-row.lead { font-weight: 650; }
+  .bar-row:not(.lead) .fill { background: var(--muted); opacity: 0.45; }
+  .verdict .bar-row .scale { background: color-mix(in srgb, var(--ink) 14%, transparent); }
   .meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 12px 0 0; font-size: 0.85rem; }
   .meta dt { color: var(--muted); }
   .meta dd { margin: 0; }
@@ -159,7 +173,8 @@
   /* ---- Form ---- */
   .form-note { margin: 0 0 14px; color: var(--muted); max-width: 70ch; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
-  .field.invalid select, .field.invalid input { border-color: var(--bad); }
+  .field.wide { grid-column: 1 / -1; }
+  .field.invalid select, .field.invalid input, .field.invalid textarea { border-color: var(--bad); }
   .field .err { margin: 4px 0 0; font-size: 0.78rem; font-weight: 600; color: var(--bad); }
 
   @media (max-width: 880px) {
@@ -269,6 +284,12 @@ function isSmallIntRange(f) {
 }
 
 function fieldControl(f, id) {
+  if (f.kind === "text") {
+    return h("textarea", {
+      id, name: f.name, rows: "5", maxlength: f.max_length,
+      placeholder: f.example !== undefined ? "e.g. " + f.example : "",
+    });
+  }
   if (f.kind === "choice" || isSmallIntRange(f)) {
     const values = f.kind === "choice"
       ? f.choices
@@ -287,7 +308,7 @@ function fieldControl(f, id) {
 
 function hintText(f) {
   let text = f.desc;
-  const isNumberBox = !(f.kind === "choice" || isSmallIntRange(f));
+  const isNumberBox = f.kind !== "text" && !(f.kind === "choice" || isSmallIntRange(f));
   if (isNumberBox) {
     if (f.min !== undefined && f.max !== undefined) text += " (" + f.min + " to " + f.max + ")";
     else if (f.min !== undefined) text += " (min " + f.min + ")";
@@ -298,7 +319,7 @@ function hintText(f) {
 function renderForm() {
   const cards = state.fields.map((f) => {
     const id = "f-" + f.name;
-    const wrap = h("div", { class: "field", "data-name": f.name });
+    const wrap = h("div", { class: f.kind === "text" ? "field wide" : "field", "data-name": f.name });
     wrap.append(h("label", { for: id }, f.name), fieldControl(f, id), h("p", { class: "hint" }, hintText(f)));
     return wrap;
   });
@@ -340,7 +361,7 @@ function collect() {
   for (const f of state.fields) {
     const raw = $("f-" + f.name).value.trim();
     if (raw === "") continue;               // leave out; the server reports it if required
-    body[f.name] = f.kind === "choice" ? raw : Number(raw);
+    body[f.name] = (f.kind === "choice" || f.kind === "text") ? raw : Number(raw);
   }
   return body;
 }
@@ -367,14 +388,14 @@ function showFieldErrors(details) {
     const wrap = els.grid.querySelector('.field[data-name="' + CSS.escape(String(name)) + '"]');
     if (!wrap) { general.push(d.msg); continue; }
     wrap.classList.add("invalid");
-    wrap.querySelector("select, input").setAttribute("aria-invalid", "true");
+    wrap.querySelector("select, input, textarea").setAttribute("aria-invalid", "true");
     wrap.append(h("p", { class: "err" }, d.type === "missing" ? "Required" : d.msg));
     first = first || wrap;
   }
   const count = details.length - general.length;
   const text = general.length ? general.join(" ") : (count === 1 ? "1 column needs attention." : count + " columns need attention.");
   els.result.replaceChildren(problem(text));
-  first?.querySelector("select, input").focus();
+  first?.querySelector("select, input, textarea").focus();
 }
 
 /* ---------- Result ---------- */
@@ -392,13 +413,33 @@ function percent(p) {
   return (v < 10 ? v.toFixed(2) : v.toFixed(1)) + "%";
 }
 
+/* One bar per class, for projects that answer with several probabilities (e.g. negative / neutral / positive). */
+function classBars(probabilities, top) {
+  const bars = h("div", { class: "bars" });
+  const fills = [];
+  for (const [name, p] of Object.entries(probabilities)) {
+    const fill = h("div", { class: "fill", style: "width:0%" });
+    fills.push([fill, p]);
+    bars.append(h("div", { class: name === top ? "bar-row lead" : "bar-row" },
+      h("span", {}, pretty(name)), h("div", { class: "scale" }, fill), h("span", { class: "bar-pct" }, percent(p))));
+  }
+  requestAnimationFrame(() => { for (const [fill, p] of fills) fill.style.width = Math.max(p * 100, 0) + "%"; });
+  return bars;
+}
+
 function showResult(data, url, body) {
   const probKey = Object.keys(data).find((k) => k.endsWith("_probability"));
   const p = probKey ? data[probKey] : null;
-  const bad = data.prediction === 1;
+  // Projects may say how to colour the answer ("ok" | "bad" | "neutral"); otherwise 1 means the risky outcome.
+  const tone = data.tone || (data.prediction === 1 ? "bad" : "ok");
 
-  const verdict = h("div", { class: "verdict " + (bad ? "bad" : "ok") });
+  const verdict = h("div", { class: "verdict " + tone });
   verdict.append(h("h2", {}, pretty(data.label)));
+
+  if (data.probabilities && typeof data.probabilities === "object") {
+    verdict.append(h("p", { class: "prob" }, h("strong", {}, percent(data.confidence)), " confident"));
+    verdict.append(classBars(data.probabilities, data.prediction));
+  }
 
   if (p !== null) {
     verdict.append(h("p", { class: "prob" },
@@ -416,8 +457,14 @@ function showResult(data, url, body) {
 
   const meta = h("dl", { class: "meta" },
     h("dt", {}, "Project"), h("dd", {}, state.project.title),
-    h("dt", {}, "Model"), h("dd", {}, els.model.selectedOptions[0].textContent),
-    h("dt", {}, "Time taken"), h("dd", {}, data.latency_ms + " ms"));
+    h("dt", {}, "Model"), h("dd", {}, els.model.selectedOptions[0].textContent));
+  if (typeof data.cleaned_text === "string") {
+    meta.append(h("dt", {}, "Words used"), h("dd", {}, data.cleaned_text));
+    if (typeof data.words_recognized === "number") {
+      meta.append(h("dt", {}, "Known words"), h("dd", {}, data.words_recognized + " of " + data.words_in_text));
+    }
+  }
+  meta.append(h("dt", {}, "Time taken"), h("dd", {}, data.latency_ms + " ms"));
 
   const details = h("details", {}, h("summary", {}, "Request sent"),
     h("pre", {}, "POST " + url + "\n" + JSON.stringify(body, null, 2)));
@@ -469,4 +516,3 @@ init();
 </script>
 </body>
 </html>
-
